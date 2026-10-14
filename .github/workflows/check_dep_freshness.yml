@@ -24,6 +24,11 @@ jobs:
       indeterminate: ${{ steps.check.outputs.indeterminate || steps.skip.outputs.indeterminate }}
       comment_body: ${{ steps.check.outputs.comment_body || steps.skip.outputs.comment_body }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
       - name: "🔎 Detect release PR"
         id: release-pr
         env:
@@ -135,6 +140,11 @@ jobs:
     permissions:
       issues: write
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
       - name: "💬 Manage PR comment"
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:

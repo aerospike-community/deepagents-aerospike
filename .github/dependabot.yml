@@ -99,3 +99,153 @@ updates:
         patterns: ["*"]
         update-types:
           - "major"
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-1/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-10/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-21/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-22/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-33/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-35/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-38/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-4/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-48/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-49/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-53/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-54/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-55/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-56/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-57/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-6/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-62/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-65/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-67/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-68/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-69/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-7/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-70/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-73/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-78/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-79/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-81/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-83/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-88/environment
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /libs/evals/datasets/context-retrieval-evals/cb-cloud-9/environment
+    schedule:
+      interval: weekly
