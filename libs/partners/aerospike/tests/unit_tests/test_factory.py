@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from unittest.mock import Mock
+
 import pytest
+from aerospike_async.exceptions import AerospikeError as AsyncAerospikeError
 from aerospike_sdk.exceptions import AerospikeError
 
 from deepagents_aerospike import create_aerospike_checkpointer
@@ -46,24 +49,22 @@ def test_invalid_port_negative():
 
 def test_boundary_port_min(monkeypatch):
     """Port 1 passes validation; a connection failure is propagated as-is."""
+
     def _connect(*args, **kwargs):
         raise AerospikeError("connection refused")
 
-    monkeypatch.setattr(
-        "deepagents_aerospike._factory.ClusterDefinition.connect", _connect
-    )
+    monkeypatch.setattr("deepagents_aerospike._factory.ClusterDefinition.connect", _connect)
     with pytest.raises(AerospikeError, match="connection refused"):
         create_aerospike_checkpointer(host="localhost", port=1)
 
 
 def test_boundary_port_max(monkeypatch):
     """Port 65535 passes validation; a connection failure is propagated as-is."""
+
     def _connect(*args, **kwargs):
         raise AerospikeError("connection refused")
 
-    monkeypatch.setattr(
-        "deepagents_aerospike._factory.ClusterDefinition.connect", _connect
-    )
+    monkeypatch.setattr("deepagents_aerospike._factory.ClusterDefinition.connect", _connect)
     with pytest.raises(AerospikeError, match="connection refused"):
         create_aerospike_checkpointer(host="localhost", port=65535)
 
@@ -94,12 +95,11 @@ def test_invalid_ttl_zero():
 
 def test_valid_config_no_server(monkeypatch):
     """Valid configuration passes validation and propagates connection failures."""
+
     def _connect(*args, **kwargs):
         raise AerospikeError("connection refused")
 
-    monkeypatch.setattr(
-        "deepagents_aerospike._factory.ClusterDefinition.connect", _connect
-    )
+    monkeypatch.setattr("deepagents_aerospike._factory.ClusterDefinition.connect", _connect)
     with pytest.raises(AerospikeError, match="connection refused"):
         create_aerospike_checkpointer(
             host="localhost",
@@ -111,11 +111,54 @@ def test_valid_config_no_server(monkeypatch):
 
 def test_valid_config_no_ttl(monkeypatch):
     """Default TTL passes validation and propagates connection failures."""
+
     def _connect(*args, **kwargs):
         raise AerospikeError("connection refused")
 
-    monkeypatch.setattr(
-        "deepagents_aerospike._factory.ClusterDefinition.connect", _connect
-    )
+    monkeypatch.setattr("deepagents_aerospike._factory.ClusterDefinition.connect", _connect)
     with pytest.raises(AerospikeError, match="connection refused"):
         create_aerospike_checkpointer(host="localhost", port=3000)
+
+
+@pytest.mark.parametrize("port", [True, False, 3000.0, "3000", None])
+def test_invalid_port_type(port):
+    with pytest.raises(ValueError, match="port must be between 1 and 65535"):
+        create_aerospike_checkpointer(host="localhost", port=port)
+
+
+@pytest.mark.parametrize("ttl", [True, False, 1.5, "60"])
+def test_invalid_ttl_type(ttl):
+    with pytest.raises(ValueError, match="ttl_minutes must be positive"):
+        create_aerospike_checkpointer(host="localhost", port=3000, ttl_minutes=ttl)
+
+
+@pytest.mark.parametrize("stage", ["session", "saver"])
+@pytest.mark.parametrize("error_type", [AerospikeError, AsyncAerospikeError, RuntimeError])
+@pytest.mark.parametrize("close_fails", [False, True])
+def test_initialization_failure_closes_cluster(monkeypatch, stage, error_type, close_fails):
+    cluster = Mock()
+    monkeypatch.setattr("deepagents_aerospike._factory.ClusterDefinition.connect", Mock(return_value=cluster))
+    failure = error_type("initialization failed")
+    if stage == "session":
+        cluster.create_session.side_effect = failure
+    else:
+        monkeypatch.setattr("deepagents_aerospike._factory.AerospikeSaver", Mock(side_effect=failure))
+    if close_fails:
+        cluster.close.side_effect = RuntimeError("close failed")
+
+    with pytest.raises(error_type, match="initialization failed") as exc:
+        create_aerospike_checkpointer(host="localhost", port=3000)
+
+    assert exc.value is failure
+    assert any("localhost:3000 namespace=test" in note for note in failure.__notes__)
+    cluster.close.assert_called_once()
+
+
+def test_saver_owns_cluster(monkeypatch):
+    cluster = Mock()
+    monkeypatch.setattr("deepagents_aerospike._factory.ClusterDefinition.connect", Mock(return_value=cluster))
+
+    saver = create_aerospike_checkpointer(host="localhost", port=3000)
+    cluster.close.assert_not_called()
+    saver.close()
+    cluster.close.assert_called_once()

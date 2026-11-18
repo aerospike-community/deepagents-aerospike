@@ -1,60 +1,31 @@
 """Integration tests for AerospikeSaver checkpoint round-trip and factory compatibility.
 
-Requires aerospike-server:dev running at AEROSPIKE_HOST:AEROSPIKE_PORT.
-All tests skip gracefully if the server is unreachable (see tests/conftest.py session fixture).
+Requires Aerospike running at AEROSPIKE_HOST:AEROSPIKE_PORT.
+Only connection failures skip tests; initialization and operation errors fail.
 """
 
 from __future__ import annotations
 
-import contextlib
-import os
-import uuid
-
 import pytest
-from aerospike_sdk import DataSet
-from langgraph.checkpoint.aerospike import AerospikeSaver
+from deepagents import create_deep_agent
+from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
+from langchain_core.messages import AIMessage
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from deepagents_aerospike import create_aerospike_checkpointer
 
-
-@pytest.fixture
-def checkpointer(session, aerospike_namespace):
-    """Yield a fresh AerospikeSaver with unique sets and clean them up after each test.
-
-    Using unique set names per test prevents parallel workers from truncating each
-    other's state. Sets are truncated both before and after the test.
-    """
-    suffix = str(uuid.uuid4()).replace("-", "")[:8]
-    set_cp = f"lg_cp_{suffix}"
-    set_writes = f"lg_cp_w_{suffix}"
-    set_meta = f"lg_cp_meta_{suffix}"
-    sets = (set_cp, set_writes, set_meta)
-
-    saver = AerospikeSaver(
-        session=session,
-        namespace=aerospike_namespace,
-        set_cp=set_cp,
-        set_writes=set_writes,
-        set_meta=set_meta,
-    )
-
-    def _truncate() -> None:
-        for set_name in sets:
-            dataset = DataSet.of(aerospike_namespace, set_name)
-            with contextlib.suppress(Exception):
-                session.truncate(dataset, before_nanos=0)
-
-    _truncate()
-    try:
-        yield saver
-    finally:
-        _truncate()
+pytestmark = pytest.mark.integration
 
 
-def test_checkpoint_write_read_round_trip(checkpointer):
+class _LocalModel(FakeMessagesListChatModel):
+    """Keep agent tests deterministic without a model service or API key."""
+
+    def bind_tools(self, tools, **kwargs):
+        return self
+
+
+def test_checkpoint_write_read_round_trip(checkpointer, config):
     """A checkpoint written via put() is retrievable via get_tuple()."""
-    config = {"configurable": {"thread_id": "test-round-trip-1"}}
     checkpoint = {
         "v": 1,
         "id": "cp-test-1",
@@ -79,41 +50,28 @@ def test_checkpoint_write_read_round_trip(checkpointer):
     assert result.checkpoint["channel_values"] == checkpoint["channel_values"]
 
 
-def test_get_tuple_returns_none_for_missing_thread(checkpointer):
+def test_get_tuple_returns_none_for_missing_thread(checkpointer, config):
     """get_tuple() returns None for a thread_id that has never been written."""
-    config = {"configurable": {"thread_id": "nonexistent-thread-999"}}
     result = checkpointer.get_tuple(config)
     assert result is None
 
 
-@pytest.mark.integration
-def test_factory_checkpointer_is_basecheckpointsaver(session):
+def test_factory_checkpointer_is_basecheckpointsaver(checkpointer):
     """create_aerospike_checkpointer returns a BaseCheckpointSaver-compatible instance."""
-    host = os.getenv("AEROSPIKE_HOST", "localhost")
-    port = int(os.getenv("AEROSPIKE_PORT", "3000"))
-    namespace = os.getenv("AEROSPIKE_NAMESPACE", "test")
-
-    checkpointer = create_aerospike_checkpointer(
-        host=host,
-        port=port,
-        namespace=namespace,
-    )
-
     assert isinstance(checkpointer, BaseCheckpointSaver)
 
 
-def test_idempotent_index_creation(session, aerospike_namespace):
-    """Creating two AerospikeSaver instances on the same namespace does not fail."""
-    saver1 = AerospikeSaver(session=session, namespace=aerospike_namespace)
-    saver2 = AerospikeSaver(session=session, namespace=aerospike_namespace)
+def test_idempotent_index_creation(checkpointer, aerospike_config, config):
+    """A second factory connection can use the same checkpoint indexes."""
+    saver = create_aerospike_checkpointer(**aerospike_config)
+    try:
+        assert saver.get_tuple(config) is None
+    finally:
+        saver.close()
 
-    assert saver1 is not None
-    assert saver2 is not None
 
-
-def test_put_writes_round_trip(checkpointer):
+def test_put_writes_round_trip(checkpointer, config):
     """Pending writes persisted via put_writes() appear in get_tuple()."""
-    config = {"configurable": {"thread_id": "test-writes-1"}}
     checkpoint = {
         "v": 1,
         "id": "cp-writes-1",
@@ -135,14 +93,11 @@ def test_put_writes_round_trip(checkpointer):
 
     result = checkpointer.get_tuple(config)
     assert result is not None
-    assert len(result.pending_writes) == 2
-    channels = {w[1] for w in result.pending_writes}
-    assert channels == {"channel1", "channel2"}
+    assert set(result.pending_writes) == {("task-1", "channel1", "value1"), ("task-1", "channel2", "value2")}
 
 
-def test_list_checkpoints_with_limit(checkpointer):
-    """list() returns checkpoints in reverse chronological order, limited by ``limit``."""
-    config = {"configurable": {"thread_id": "test-list-1"}}
+def test_list_checkpoints_with_limit(checkpointer, config):
+    """list() returns checkpoints in reverse chronological order, limited by `limit`."""
     metadata = {"source": "test", "step": 1, "writes": {}, "parents": {}}
     ids = []
     for i in range(3):
@@ -151,7 +106,7 @@ def test_list_checkpoints_with_limit(checkpointer):
         checkpoint = {
             "v": 1,
             "id": cp_id,
-            "ts": f"2026-01-0{i+1}T00:00:00+00:00",
+            "ts": f"2026-01-0{i + 1}T00:00:00+00:00",
             "channel_values": {},
             "channel_versions": {},
             "versions_seen": {},
@@ -159,17 +114,16 @@ def test_list_checkpoints_with_limit(checkpointer):
         }
         config = checkpointer.put(config, checkpoint, metadata, {})
 
-    listed = list(checkpointer.list({"configurable": {"thread_id": "test-list-1"}}, limit=2))
+    listed = list(checkpointer.list(config, limit=2))
     assert len(listed) == 2
     # Most recent first.
     assert listed[0].checkpoint["id"] == ids[-1]
     assert listed[1].checkpoint["id"] == ids[-2]
 
 
-def test_delete_thread_removes_history(checkpointer):
+def test_delete_thread_removes_history(checkpointer, config):
     """delete_thread() removes the checkpoint, writes, and latest pointer."""
-    thread_id = "test-delete-1"
-    config = {"configurable": {"thread_id": thread_id}}
+    thread_id = config["configurable"]["thread_id"]
     checkpoint = {
         "v": 1,
         "id": "cp-delete-1",
@@ -192,18 +146,24 @@ def test_delete_thread_removes_history(checkpointer):
     assert list(checkpointer.list(config)) == []
 
 
-def test_factory_checkpointer_can_close():
-    """``create_aerospike_checkpointer`` returns a saver whose ``close()`` is safe."""
-    host = os.getenv("AEROSPIKE_HOST", "localhost")
-    port = int(os.getenv("AEROSPIKE_PORT", "3000"))
-    namespace = os.getenv("AEROSPIKE_NAMESPACE", "test")
+def test_deep_agent_resumes_with_new_checkpointer(checkpointer, aerospike_config, config):
+    """Real Deep Agents state survives closing and replacing the factory's saver."""
+    writer = create_aerospike_checkpointer(**aerospike_config)
+    try:
+        agent = create_deep_agent(model=_LocalModel(responses=[AIMessage(content="First reply")]), checkpointer=writer)
+        agent.invoke({"messages": [{"role": "user", "content": "Remember this"}]}, config)
+    finally:
+        writer.close()
 
-    checkpointer = create_aerospike_checkpointer(
-        host=host,
-        port=port,
-        namespace=namespace,
-    )
+    agent = create_deep_agent(model=_LocalModel(responses=[AIMessage(content="Second reply")]), checkpointer=checkpointer)
+    result = agent.invoke({"messages": [{"role": "user", "content": "Continue"}]}, config)
+    assert [message.content for message in result["messages"]] == ["Remember this", "First reply", "Continue", "Second reply"]
+    assert [message.content for message in agent.get_state(config).values["messages"]] == [message.content for message in result["messages"]]
 
-    checkpointer.close()
 
-    assert isinstance(checkpointer, BaseCheckpointSaver)
+async def test_deep_agent_resumes_async(checkpointer, config):
+    """The same saver supports the Deep Agents async invocation and state APIs."""
+    agent = create_deep_agent(model=_LocalModel(responses=[AIMessage(content="Async reply")]), checkpointer=checkpointer)
+    await agent.ainvoke({"messages": [{"role": "user", "content": "Async message"}]}, config)
+    state = await agent.aget_state(config)
+    assert [message.content for message in state.values["messages"]] == ["Async message", "Async reply"]

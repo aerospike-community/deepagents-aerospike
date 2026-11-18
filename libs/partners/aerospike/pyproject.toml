@@ -53,7 +53,6 @@ test = [
 [tool.uv.sources]
 deepagents = { path = "../../deepagents", editable = true }
 langgraph-checkpoint-aerospike = { path = "../../../../langgraph-aerospike/packages/langgraph-checkpoint-aerospike", editable = true }
-langgraph-store-aerospike = { path = "../../../../langgraph-aerospike/packages/langgraph-store-aerospike", editable = true }
 aerospike-sdk = { path = "../../../../aerospike-client-python-sdk", editable = true }
 
 [tool.ty.environment]
