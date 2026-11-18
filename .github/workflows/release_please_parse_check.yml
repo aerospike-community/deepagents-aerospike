@@ -51,6 +51,11 @@ jobs:
     name: "validate squash-merge message parses"
     runs-on: ubuntu-latest
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
       - name: Install @conventional-commits/parser
         # Exact pin (NOT a semver range) — must equal release-please's
         # package.json entry. A range would silently drift on minor bumps and

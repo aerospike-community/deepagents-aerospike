@@ -211,7 +211,7 @@ runs:
     - name: Restore agent memory
       if: inputs.enable_memory == 'true'
       id: restore-memory
-      uses: actions/cache/restore@v6
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: |
           ~/.deepagents/${{ inputs.agent_name }}/
@@ -528,7 +528,7 @@ runs:
 
     - name: Save agent memory
       if: inputs.enable_memory == 'true' && steps.cache-key.outputs.key != '' && always()
-      uses: actions/cache/save@v6
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: |
           ~/.deepagents/${{ inputs.agent_name }}/

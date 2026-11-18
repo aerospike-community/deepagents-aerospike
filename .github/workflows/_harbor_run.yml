@@ -126,6 +126,11 @@ jobs:
       # over this.
       aggregate_matrix: ${{ steps.agg-matrix.outputs.aggregate_matrix }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
       - name: "📋 Checkout Code"
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -309,6 +314,11 @@ jobs:
       OPENAI_BASE_URL: "https://api.openai.com/v1"
       OLLAMA_HOST: "https://ollama.com"
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
       - name: "🔑 Verify sandbox credentials"
         working-directory: .
         env:
@@ -1154,6 +1164,11 @@ jobs:
       # filtered run is not falsely reported as incomplete.
       HARBOR_RESULT: ${{ needs.harbor.result }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
       - name: "📋 Checkout Code"
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
